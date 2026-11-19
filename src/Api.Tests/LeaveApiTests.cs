@@ -59,6 +59,30 @@ public class LeaveApiTests(ApiFactory api) : IClassFixture<ApiFactory>
     }
 
     record Row(int Id, int EmployeeId, string Status);
+    record SummaryRow(int EmployeeId, decimal DaysTakenThisYear);
+
+    [Fact]
+    public async Task Summary_shows_own_approved_days()
+    {
+        var farah = await api.SignedInAs(People.Farah);
+        var res = await farah.GetAsync("/employees/6/summary");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal(3, (await res.Content.ReadFromJsonAsync<SummaryRow>())!.DaysTakenThisYear); // seed: 3 approved days
+    }
+
+    [Fact]
+    public async Task Summary_of_another_employee_is_403()
+    {
+        var farah = await api.SignedInAs(People.Farah);
+        Assert.Equal(HttpStatusCode.Forbidden, (await farah.GetAsync("/employees/7/summary")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Summary_of_unknown_employee_is_404()
+    {
+        var hr = await api.SignedInAs(People.Dina);
+        Assert.Equal(HttpStatusCode.NotFound, (await hr.GetAsync("/employees/99999/summary")).StatusCode);
+    }
 
     [Fact]
     public async Task Missing_start_date_is_400_not_year_1()
